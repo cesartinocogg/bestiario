@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-black">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bestiario - Coplas a las Criaturas de Venezuela</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Cormorant Garamond & Cinzel -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        cinzel: ['Cinzel', 'serif'],
+                        garamond: ['Cormorant Garamond', 'serif'],
+                    },
+                    colors: {
+                        dark: {
+                            bg: '#070709',
+                            velvet: '#0f0e13',
+                            border: '#2a241e'
+                        },
+                        gold: {
+                            light: '#f5e0a3',
+                            DEFAULT: '#c8a458',
+                            dark: '#8a6d2f'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Ultra dark mysterious background with subtle vignette */
+        body {
+            background: radial-gradient(circle at center, #131219 0%, #08070a 70%, #030304 100%);
+            color: #d1c7b7;
+            user-select: none;
+            overflow: hidden;
+            font-family: 'Cormorant Garamond', serif;
+        }
+
+        /* 3D Stage & Page Container */
+        .stage-3d {
+            perspective: 2200px;
+            perspective-origin: 50% 50%;
+        }
+
+        .book-page-container {
+            transform-style: preserve-3d;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.95), 0 0 40px rgba(0, 0, 0, 0.8), 0 0 1px rgba(200, 164, 88, 0.2);
+            transition: box-shadow 0.3s ease;
+        }
+
+        .book-page-container:hover {
+            box-shadow: 0 35px 90px rgba(0, 0, 0, 0.98), 0 0 30px rgba(200, 164, 88, 0.15);
+        }
+
+        /* Flipping animated page card */
+        .flipping-page {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            backface-visibility: hidden;
+            z-index: 30;
+            pointer-events: none;
+        }
+
+        /* Front and Back of the turning page */
+        .flipping-face {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            overflow: hidden;
+            background-color: #0d0c0e;
+            border-radius: 6px;
+        }
+
+        .flipping-back {
+            transform: rotateY(180deg);
+        }
+
+        /* Interactive Corner Hotspots */
+        .corner-hotspot {
+            position: absolute;
+            width: 90px;
+            height: 90px;
+            z-index: 25;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        /* Subtle golden corner curl effect on hover */
+        .corner-hotspot::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            pointer-events: none;
+        }
+
+        .corner-br {
+            bottom: 0;
+            right: 0;
+        }
+        .corner-br::after {
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(135deg, transparent 50%, rgba(200, 164, 88, 0.3) 80%, rgba(245, 224, 163, 0.7) 100%);
+            border-top-left-radius: 100%;
+            box-shadow: -3px -3px 10px rgba(0,0,0,0.5);
+        }
+
+        .corner-bl {
+            bottom: 0;
+            left: 0;
+        }
+        .corner-bl::after {
+            bottom: 0;
+            left: 0;
+            background: linear-gradient(225deg, transparent 50%, rgba(200, 164, 88, 0.3) 80%, rgba(245, 224, 163, 0.7) 100%);
+            border-top-right-radius: 100%;
+            box-shadow: 3px -3px 10px rgba(0,0,0,0.5);
+        }
+
+        .corner-tr {
+            top: 0;
+            right: 0;
+        }
+        .corner-tr::after {
+            top: 0;
+            right: 0;
+            background: linear-gradient(45deg, transparent 50%, rgba(200, 164, 88, 0.3) 80%, rgba(245, 224, 163, 0.7) 100%);
+            border-bottom-left-radius: 100%;
+            box-shadow: -3px 3px 10px rgba(0,0,0,0.5);
+        }
+
+        .corner-tl {
+            top: 0;
+            left: 0;
+        }
+        .corner-tl::after {
+            top: 0;
+            left: 0;
+            background: linear-gradient(315deg, transparent 50%, rgba(200, 164, 88, 0.3) 80%, rgba(245, 224, 163, 0.7) 100%);
+            border-bottom-right-radius: 100%;
+            box-shadow: 3px 3px 10px rgba(0,0,0,0.5);
+        }
+
+        .corner-hotspot:hover::after {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        /* Dynamic Shadow Shader Overlay during page flip */
+        .spine-shadow-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 20;
+            transition: opacity 0.3s ease;
+            opacity: 0;
+        }
+
+        /* Keyframes for smooth 3D Flip animation */
+        @keyframes flipNextPage {
+            0% {
+                transform: rotateY(0deg);
+                box-shadow: 0 0 0 rgba(0,0,0,0);
+            }
+            50% {
+                box-shadow: -20px 0 50px rgba(0, 0, 0, 0.8);
+            }
+            100% {
+                transform: rotateY(-180deg);
+                box-shadow: 0 0 0 rgba(0,0,0,0);
+            }
+        }
+
+        @keyframes flipPrevPage {
+            0% {
+                transform: rotateY(0deg);
+                box-shadow: 0 0 0 rgba(0,0,0,0);
+            }
+            50% {
+                box-shadow: 20px 0 50px rgba(0, 0, 0, 0.8);
+            }
+            100% {
+                transform: rotateY(180deg);
+                box-shadow: 0 0 0 rgba(0,0,0,0);
+            }
+        }
+
+        .anim-flip-next {
+            animation: flipNextPage 0.75s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+            transform-origin: left center;
+        }
+
+        .anim-flip-prev {
+            animation: flipPrevPage 0.75s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+            transform-origin: right center;
+        }
+
+        /* Custom Scrollbar for Index Drawer */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #09080c;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2a2218;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #c8a458;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col justify-between select-none relative">
+
+    <!-- SUBTLE FLOATING TITLE HEADER -->
+    <header class="w-full py-4 px-6 flex justify-between items-center z-20 pointer-events-auto">
+        <div class="flex items-center space-x-3">
+            <span class="text-gold text-lg tracking-widest font-cinzel font-semibold opacity-90">BESTIARIUM</span>
+            <span class="text-xs text-stone-500 font-cinzel hidden sm:inline">| CODEX ILLUMINATUS</span>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <!-- Grid / Index Button -->
+            <button onclick="toggleIndexDrawer()" class="px-3 py-1.5 rounded border border-gold/30 hover:border-gold/80 bg-black/40 text-gold/80 hover:text-gold text-xs font-cinzel tracking-wider transition flex items-center space-x-2 backdrop-blur-md">
+                <i class="fa-solid fa-book-open text-xs"></i>
+                <span id="indexBtnLabel">ÍNDICE (52)</span>
+            </button>
+
+            <!-- Fullscreen -->
+            <button onclick="toggleFullScreen()" title="Pantalla Completa" class="p-2 rounded border border-gold/20 hover:border-gold/60 bg-black/40 text-gold/70 hover:text-gold text-xs transition backdrop-blur-md">
+                <i class="fa-solid fa-expand"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN VERTICAL PAGE STAGE -->
+    <main class="flex-1 flex items-center justify-center relative p-2 sm:p-4 stage-3d my-auto">
+
+        <!-- SINGLE VERTICAL PAGE FRAME (Aspect ratio approx 1:1.414) -->
+        <div id="pageFrame" class="book-page-container relative w-full max-w-[500px] aspect-[1/1.414] bg-dark-velvet rounded-md border border-gold/20 overflow-hidden flex flex-col justify-center items-center">
+            
+            <!-- ELEGANT GOLDEN CORNER BORDERS (CSS OVERLAY) -->
+            <div class="absolute top-2 left-2 w-4 h-4 border-t border-l border-gold/40 pointer-events-none z-10"></div>
+            <div class="absolute top-2 right-2 w-4 h-4 border-t border-r border-gold/40 pointer-events-none z-10"></div>
+            <div class="absolute bottom-2 left-2 w-4 h-4 border-b border-l border-gold/40 pointer-events-none z-10"></div>
+            <div class="absolute bottom-2 right-2 w-4 h-4 border-b border-r border-gold/40 pointer-events-none z-10"></div>
+
+            <!-- BASE PAGE IMAGE (ACTIVE PAGE) -->
+            <img id="activePageImage" 
+                 src="Bestiario_cover_front.jpg" 
+                 alt="Página del Bestiario" 
+                 class="w-full h-full object-contain pointer-events-none transition-opacity duration-200"
+                 onerror="handleImageError(this)">
+
+            <!-- FALLBACK CONTAINER IF LOCAL JPG NOT FOUND -->
+            <div id="fallbackView" class="hidden absolute inset-0 flex-col items-center justify-center p-8 text-center bg-[#110f14] border border-gold/20">
+                <i id="fallbackIcon" class="fa-solid fa-book text-5xl text-gold/40 mb-4"></i>
+                <h2 id="fallbackTitle" class="font-cinzel text-gold text-xl mb-2">Portada</h2>
+                <p class="text-xs text-stone-400 max-w-xs font-garamond italic">
+                    Visualización en modo borrador. Coloca la imagen <span class="text-gold/80 font-mono" id="fallbackFilename">Bestiario_cover_front.jpg</span> en la misma carpeta para ver la ilustración completa.
+                </p>
+            </div>
+
+            <!-- INTERACTIVE CORNER FLIP HOTSPOTS WITH PEEL HIGHLIGHT -->
+            <div class="corner-hotspot corner-br" title="Siguiente página" onclick="nextPage()"></div>
+            <div class="corner-hotspot corner-bl" title="Página anterior" onclick="prevPage()"></div>
+            <div class="corner-hotspot corner-tr" title="Siguiente página" onclick="nextPage()"></div>
+            <div class="corner-hotspot corner-tl" title="Página anterior" onclick="prevPage()"></div>
+
+            <!-- SIDE CLICK NAVIGATION ZONES -->
+            <div class="absolute top-0 right-0 w-1/3 h-full z-10 cursor-pointer" onclick="nextPage()" title="Siguiente"></div>
+            <div class="absolute top-0 left-0 w-1/3 h-full z-10 cursor-pointer" onclick="prevPage()" title="Anterior"></div>
+
+            <!-- 3D FLIPPING PAGE LAYER (CREATED DYNAMICALLY ON TURN) -->
+            <div id="flipLayer"></div>
+
+            <!-- SHADOW SHADER OVERLAY -->
+            <div id="spineShadow" class="spine-shadow-overlay"></div>
+        </div>
+
+    </main>
+
+    <!-- DISCREET BOTTOM CONTROL BAR -->
+    <footer class="w-full py-4 px-6 flex flex-col sm:flex-row justify-between items-center z-20 gap-3 border-t border-gold/10 bg-black/60 backdrop-blur-md">
+        
+        <!-- PREVIOUS BUTTON -->
+        <button onclick="prevPage()" class="text-xs font-cinzel text-stone-400 hover:text-gold transition flex items-center space-x-2 px-3 py-1.5 rounded border border-transparent hover:border-gold/30">
+            <i class="fa-solid fa-chevron-left text-[10px]"></i>
+            <span>ANTERIOR</span>
+        </button>
+
+        <!-- CENTER PAGE INDICATOR & SLIDER -->
+        <div class="flex items-center space-x-4">
+            <span id="pageIndicator" class="text-xs font-cinzel tracking-widest text-gold/90 min-w-[120px] text-center">PORTADA</span>
+            
+            <input type="range" id="pageSlider" min="0" max="53" value="0" oninput="onSliderChange(this.value)" 
+                   class="w-28 sm:w-44 accent-amber-600 bg-stone-900 h-1 rounded-lg cursor-pointer opacity-70 hover:opacity-100 transition">
+        </div>
+
+        <!-- NEXT BUTTON -->
+        <button onclick="nextPage()" class="text-xs font-cinzel text-stone-400 hover:text-gold transition flex items-center space-x-2 px-3 py-1.5 rounded border border-transparent hover:border-gold/30">
+            <span>SIGUIENTE</span>
+            <i class="fa-solid fa-chevron-right text-[10px]"></i>
+        </button>
+    </footer>
+
+    <!-- INDEX GRID MODAL / DRAWER -->
+    <div id="indexOverlay" class="fixed inset-0 bg-black/80 z-40 hidden backdrop-blur-md transition-opacity opacity-0" onclick="toggleIndexDrawer()"></div>
+    <div id="indexDrawer" class="fixed top-0 right-0 h-full w-full sm:w-[420px] bg-[#0c0b0f] border-l border-gold/30 z-50 transform translate-x-full transition-transform duration-300 flex flex-col shadow-2xl">
+        
+        <div class="p-4 border-b border-gold/20 flex justify-between items-center bg-black/50">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-compass text-gold text-sm"></i>
+                <h2 class="text-gold font-cinzel text-sm tracking-wider">ÍNDICE DE PÁGINAS</h2>
+            </div>
+            <button onclick="toggleIndexDrawer()" class="text-stone-400 hover:text-gold p-1 text-sm">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- THUMBNAIL GRID -->
+        <div id="thumbnailGrid" class="flex-1 overflow-y-auto p-4 grid grid-cols-3 gap-3">
+            <!-- Populated via JavaScript -->
+        </div>
+    </div>
+
+    <!-- CORE LOGIC SCRIPT -->
+    <script>
+        /* ==========================================================================
+           CONFIGURACIÓN MODULAR DEL LIBRO / BOOK CONFIGURATION MODULE
+           Para reutilizar este visor con otras imágenes o colecciones, edita
+           las variables a continuación sin alterar el resto de la lógica.
+           ========================================================================== */
+        const BOOK_CONFIG = {
+            // Número total de páginas internas (excluyendo portada y contraportada)
+            totalPages: 52,
+
+            // Nombres de archivos para portada (0) y contraportada (totalPages + 1)
+            frontCoverImage: "Bestiario_cover_front.jpg",
+            backCoverImage: "Bestiario_cover_back.jpg",
+
+            // Patrón de nombrado para páginas internas.
+            // {num} se reemplaza automáticamente por el número formateado con ceros.
+            pagePrefix: "Bestiario_page-",
+            pageExtension: ".jpg",
+            pagePaddingLength: 4, // 0001, 0002...
+
+            // Función generadora de rutas
+            getPageFilename: function(index) {
+                if (index === 0) return this.frontCoverImage;
+                if (index === this.totalPages + 1) return this.backCoverImage;
+                
+                const paddedNum = String(index).padStart(this.pagePaddingLength, '0');
+                return `${this.pagePrefix}${paddedNum}${this.pageExtension}`;
+            }
+        };
+
+        /* ==========================================================================
+           ESTADO GLOBAL DE LA APLICACIÓN / GLOBAL STATE
+           0 = Portada (Front Cover)
+           1 a totalPages = Páginas internas
+           totalPages + 1 = Contraportada (Back Cover)
+           ========================================================================== */
+        let currentPage = 0; 
+        const maxIndex = BOOK_CONFIG.totalPages + 1;
+        let isAnimating = false;
+
+        // Preload next and previous images for instant smooth transitions
+        function preloadNeighborImages(index) {
+            if (index < maxIndex) {
+                const imgNext = new Image();
+                imgNext.src = BOOK_CONFIG.getPageFilename(index + 1);
+            }
+            if (index > 0) {
+                const imgPrev = new Image();
+                imgPrev.src = BOOK_CONFIG.getPageFilename(index - 1);
+            }
+        }
+
+        // Obtiene la etiqueta textual para los indicadores de la interfaz
+        function getPageLabel(index) {
+            if (index === 0) return "PORTADA";
+            if (index === maxIndex) return "CONTRAPORTADA";
+            return `PÁGINA ${String(index).padStart(2, '0')} DE ${BOOK_CONFIG.totalPages}`;
+        }
+
+        // Update view & UI elements
+        function updatePageDisplay(index) {
+            const filename = BOOK_CONFIG.getPageFilename(index);
+            const activeImg = document.getElementById('activePageImage');
+            const fallbackView = document.getElementById('fallbackView');
+            
+            // Reset fallback state
+            activeImg.style.display = 'block';
+            fallbackView.classList.add('hidden');
+
+            activeImg.src = filename;
+
+            // Update footer & slider
+            document.getElementById('pageIndicator').innerText = getPageLabel(index);
+            document.getElementById('pageSlider').value = index;
+
+            preloadNeighborImages(index);
+            highlightCurrentThumbnail(index);
+        }
+
+        // Handle missing local images with elegant fallback
+        function handleImageError(imgElement) {
+            imgElement.style.display = 'none';
+            const fallbackView = document.getElementById('fallbackView');
+            const filename = BOOK_CONFIG.getPageFilename(currentPage);
+            const icon = document.getElementById('fallbackIcon');
+
+            if (currentPage === 0) {
+                document.getElementById('fallbackTitle').innerText = "Portada";
+                icon.className = "fa-solid fa-book text-5xl text-gold/40 mb-4";
+            } else if (currentPage === maxIndex) {
+                document.getElementById('fallbackTitle').innerText = "Contraportada";
+                icon.className = "fa-solid fa-book-journal-whills text-5xl text-gold/40 mb-4";
+            } else {
+                document.getElementById('fallbackTitle').innerText = `Página ${currentPage}`;
+                icon.className = "fa-solid fa-dragon text-5xl text-gold/40 mb-4";
+            }
+
+            document.getElementById('fallbackFilename').innerText = filename;
+            fallbackView.classList.remove('hidden');
+            fallbackView.classList.add('flex');
+        }
+
+        // 3D Page Turn Animation Trigger (Next)
+        function nextPage() {
+            if (currentPage >= maxIndex || isAnimating) return;
+            isAnimating = true;
+
+            const flipLayer = document.getElementById('flipLayer');
+            const currentFilename = BOOK_CONFIG.getPageFilename(currentPage);
+            const nextFilename = BOOK_CONFIG.getPageFilename(currentPage + 1);
+
+            // Construct 3D turning card element
+            flipLayer.innerHTML = `
+                <div class="flipping-page anim-flip-next">
+                    <div class="flipping-face">
+                        <img src="${currentFilename}" class="w-full h-full object-contain" onerror="this.style.display='none'">
+                    </div>
+                    <div class="flipping-face flipping-back">
+                        <img src="${nextFilename}" class="w-full h-full object-contain" onerror="this.style.display='none'">
+                    </div>
+                </div>
+            `;
+
+            // Complete page state turn midway through animation
+            setTimeout(() => {
+                currentPage++;
+                updatePageDisplay(currentPage);
+            }, 370);
+
+            // Clean up flip layer after animation finishes
+            setTimeout(() => {
+                flipLayer.innerHTML = '';
+                isAnimating = false;
+            }, 750);
+        }
+
+        // 3D Page Turn Animation Trigger (Previous)
+        function prevPage() {
+            if (currentPage <= 0 || isAnimating) return;
+            isAnimating = true;
+
+            const flipLayer = document.getElementById('flipLayer');
+            const currentFilename = BOOK_CONFIG.getPageFilename(currentPage);
+            const prevFilename = BOOK_CONFIG.getPageFilename(currentPage - 1);
+
+            // Construct 3D turning card element flipping backwards
+            flipLayer.innerHTML = `
+                <div class="flipping-page anim-flip-prev">
+                    <div class="flipping-face">
+                        <img src="${currentFilename}" class="w-full h-full object-contain" onerror="this.style.display='none'">
+                    </div>
+                    <div class="flipping-face flipping-back">
+                        <img src="${prevFilename}" class="w-full h-full object-contain" onerror="this.style.display='none'">
+                    </div>
+                </div>
+            `;
+
+            setTimeout(() => {
+                currentPage--;
+                updatePageDisplay(currentPage);
+            }, 370);
+
+            setTimeout(() => {
+                flipLayer.innerHTML = '';
+                isAnimating = false;
+            }, 750);
+        }
+
+        // Slider control input
+        function onSliderChange(val) {
+            currentPage = parseInt(val);
+            updatePageDisplay(currentPage);
+        }
+
+        // Direct page jump from Index Drawer
+        function jumpToPage(pageNum) {
+            currentPage = pageNum;
+            updatePageDisplay(currentPage);
+            toggleIndexDrawer();
+        }
+
+        // Index Drawer Toggle
+        function toggleIndexDrawer() {
+            const overlay = document.getElementById('indexOverlay');
+            const drawer = document.getElementById('indexDrawer');
+
+            if (drawer.classList.contains('translate-x-full')) {
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.remove('opacity-0'), 10);
+                drawer.classList.remove('translate-x-full');
+            } else {
+                overlay.classList.add('opacity-0');
+                drawer.classList.add('translate-x-full');
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+            }
+        }
+
+        // Build thumbnail drawer items (Cover + Pages 1-52 + Back Cover)
+        function buildThumbnailGrid() {
+            const grid = document.getElementById('thumbnailGrid');
+            let html = '';
+            
+            // Helper SVG placeholder data string
+            const getSvgFallback = (label) => `data:image/svg+xml,%3CSVG%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='140'%3E%3Crect%20width='100%25'%20height='100%25'%20fill='%23111115'/%3E%3Ctext%20x='50%25'%20y='50%25'%20fill='%23c8a458'%20font-size='12'%20text-anchor='middle'%20dominant-baseline='middle'%3E${encodeURIComponent(label)}%3C/text%3E%3C/SVG%3E`;
+
+            for (let i = 0; i <= maxIndex; i++) {
+                const filename = BOOK_CONFIG.getPageFilename(i);
+                let label = `${i}`;
+                if (i === 0) label = "Portada";
+                if (i === maxIndex) label = "Contraportada";
+
+                html += `
+                    <button id="thumb-${i}" onclick="jumpToPage(${i})" class="p-1.5 bg-black/60 hover:bg-black/90 border border-gold/20 hover:border-gold/80 rounded transition group flex flex-col items-center">
+                        <div class="w-full aspect-[1/1.4] bg-stone-900 rounded overflow-hidden relative mb-1 border border-stone-800">
+                            <img src="${filename}" alt="${label}" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='${getSvgFallback(label)}';">
+                        </div>
+                        <span class="text-[10px] font-cinzel text-stone-400 group-hover:text-gold">${label}</span>
+                    </button>
+                `;
+            }
+            grid.innerHTML = html;
+
+            // Configure slider bounds based on total items
+            const slider = document.getElementById('pageSlider');
+            slider.min = 0;
+            slider.max = maxIndex;
+
+            // Update drawer button badge count
+            document.getElementById('indexBtnLabel').innerText = `ÍNDICE (${BOOK_CONFIG.totalPages})`;
+        }
+
+        function highlightCurrentThumbnail(index) {
+            for (let i = 0; i <= maxIndex; i++) {
+                const el = document.getElementById(`thumb-${i}`);
+                if (el) {
+                    if (i === index) {
+                        el.classList.add('border-gold', 'bg-gold/10');
+                    } else {
+                        el.classList.remove('border-gold', 'bg-gold/10');
+                    }
+                }
+            }
+        }
+
+        // Fullscreen toggle
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+
+        // Touch Swipe Gesture Support
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.getElementById('pageFrame').addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.getElementById('pageFrame').addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        }, { passive: true });
+
+        function handleSwipe() {
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > 40) {
+                if (diff > 0) nextPage();
+                else prevPage();
+            }
+        }
+
+        // Keyboard Navigation
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                nextPage();
+            } else if (e.key === 'ArrowLeft') {
+                prevPage();
+            }
+        });
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            buildThumbnailGrid();
+            updatePageDisplay(currentPage);
+        });
+    </script>
+</body>
+</html>
