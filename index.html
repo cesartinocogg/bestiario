@@ -2,7 +2,7 @@
 <html lang="es" class="h-full bg-black">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Bestiario - Coplas a las Criaturas de Venezuela</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -46,6 +46,13 @@
             user-select: none;
             overflow: hidden;
             font-family: 'Cormorant Garamond', serif;
+            touch-action: manipulation;
+        }
+
+        /* Responsive height fix for mobile browsers */
+        .app-viewport {
+            height: 100vh;
+            height: 100dvh;
         }
 
         /* 3D Stage & Page Container */
@@ -56,12 +63,24 @@
 
         .book-page-container {
             transform-style: preserve-3d;
-            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.95), 0 0 40px rgba(0, 0, 0, 0.8), 0 0 1px rgba(200, 164, 88, 0.2);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.95), 0 0 30px rgba(0, 0, 0, 0.8), 0 0 1px rgba(200, 164, 88, 0.2);
             transition: box-shadow 0.3s ease;
+            touch-action: none; /* Handled by zoom/drag logic when zoomed */
         }
 
         .book-page-container:hover {
-            box-shadow: 0 35px 90px rgba(0, 0, 0, 0.98), 0 0 30px rgba(200, 164, 88, 0.15);
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.98), 0 0 25px rgba(200, 164, 88, 0.15);
+        }
+
+        /* Zoom Container handling smooth transform */
+        .zoom-layer {
+            transition: transform 0.1s ease-out;
+            transform-origin: center center;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         /* Flipping animated page card */
@@ -97,14 +116,16 @@
         /* Interactive Corner Hotspots */
         .corner-hotspot {
             position: absolute;
-            width: 90px;
-            height: 90px;
+            width: 25%;
+            height: 20%;
+            max-width: 90px;
+            max-height: 90px;
             z-index: 25;
             cursor: pointer;
             transition: all 0.3s ease;
         }
 
-        /* Subtle golden corner curl effect on hover */
+        /* Subtle golden corner curl effect on hover/touch */
         .corner-hotspot::after {
             content: '';
             position: absolute;
@@ -163,7 +184,7 @@
             box-shadow: 3px 3px 10px rgba(0,0,0,0.5);
         }
 
-        .corner-hotspot:hover::after {
+        .corner-hotspot:hover::after, .corner-hotspot:active::after {
             opacity: 1;
             transform: scale(1.1);
         }
@@ -220,9 +241,24 @@
             transform-origin: right center;
         }
 
-        /* Custom Scrollbar for Index Drawer */
+        /* Bookmark Ribbon Accent */
+        .bookmark-ribbon {
+            position: absolute;
+            top: -2px;
+            right: 24px;
+            z-index: 28;
+            cursor: pointer;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+            filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.7));
+        }
+
+        .bookmark-ribbon:hover {
+            transform: translateY(2px);
+        }
+
+        /* Custom Scrollbar for Drawer */
         ::-webkit-scrollbar {
-            width: 6px;
+            width: 5px;
         }
         ::-webkit-scrollbar-track {
             background: #09080c;
@@ -236,68 +272,92 @@
         }
     </style>
 </head>
-<body class="h-full flex flex-col justify-between select-none relative">
+<body class="app-viewport flex flex-col justify-between select-none relative overflow-hidden">
 
-    <!-- SUBTLE FLOATING TITLE HEADER -->
-    <header class="w-full py-4 px-6 flex justify-between items-center z-20 pointer-events-auto">
-        <div class="flex items-center space-x-3">
-            <span class="text-gold text-lg tracking-widest font-cinzel font-semibold opacity-90">BESTIARIUM</span>
-            <span class="text-xs text-stone-500 font-cinzel hidden sm:inline">| CODEX ILLUMINATUS</span>
+    <!-- HEADER / NAVIGATION TITLE BAR -->
+    <header class="w-full py-2.5 sm:py-3.5 px-4 sm:px-6 flex justify-between items-center z-20 pointer-events-auto bg-black/40 backdrop-blur-md border-b border-gold/10">
+        <div class="flex items-center space-x-2 sm:space-x-3 truncate pr-2">
+            <i class="fa-solid fa-book-bookmark text-gold text-sm sm:text-base"></i>
+            <h1 class="text-gold text-xs sm:text-base tracking-wider font-cinzel font-semibold truncate">BESTIARIO</h1>
+            <span class="text-[10px] sm:text-xs text-stone-400 font-cinzel hidden md:inline truncate">| Coplas a las Criaturas de Venezuela</span>
         </div>
 
-        <div class="flex items-center space-x-3">
+        <div class="flex items-center space-x-1.5 sm:space-x-3 shrink-0">
+            <!-- Bookmark Quick Toggle Button -->
+            <button id="bookmarkBtn" onclick="toggleCurrentBookmark()" class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded border border-gold/30 hover:border-gold/80 bg-black/50 text-gold/80 hover:text-gold text-xs font-cinzel transition flex items-center space-x-1.5" title="Marcar esta página">
+                <i id="bookmarkBtnIcon" class="fa-regular fa-bookmark text-xs"></i>
+                <span class="hidden sm:inline">MARCADOR</span>
+            </button>
+
             <!-- Grid / Index Button -->
-            <button onclick="toggleIndexDrawer()" class="px-3 py-1.5 rounded border border-gold/30 hover:border-gold/80 bg-black/40 text-gold/80 hover:text-gold text-xs font-cinzel tracking-wider transition flex items-center space-x-2 backdrop-blur-md">
-                <i class="fa-solid fa-book-open text-xs"></i>
-                <span id="indexBtnLabel">ÍNDICE (52)</span>
+            <button onclick="toggleIndexDrawer()" class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded border border-gold/30 hover:border-gold/80 bg-black/50 text-gold/80 hover:text-gold text-xs font-cinzel tracking-wider transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-list text-xs"></i>
+                <span id="indexBtnLabel">ÍNDICE</span>
             </button>
 
             <!-- Fullscreen -->
-            <button onclick="toggleFullScreen()" title="Pantalla Completa" class="p-2 rounded border border-gold/20 hover:border-gold/60 bg-black/40 text-gold/70 hover:text-gold text-xs transition backdrop-blur-md">
+            <button onclick="toggleFullScreen()" title="Pantalla Completa" class="p-1.5 sm:p-2 rounded border border-gold/20 hover:border-gold/60 bg-black/50 text-gold/70 hover:text-gold text-xs transition">
                 <i class="fa-solid fa-expand"></i>
             </button>
         </div>
     </header>
 
-    <!-- MAIN VERTICAL PAGE STAGE -->
-    <main class="flex-1 flex items-center justify-center relative p-2 sm:p-4 stage-3d my-auto">
+    <!-- MAIN STAGE / BOOK CONTAINER -->
+    <main class="flex-1 flex items-center justify-center relative p-2 sm:p-4 stage-3d my-auto overflow-hidden">
 
         <!-- SINGLE VERTICAL PAGE FRAME (Aspect ratio approx 1:1.414) -->
-        <div id="pageFrame" class="book-page-container relative w-full max-w-[500px] aspect-[1/1.414] bg-dark-velvet rounded-md border border-gold/20 overflow-hidden flex flex-col justify-center items-center">
+        <div id="pageFrame" class="book-page-container relative w-full max-w-[460px] sm:max-w-[500px] aspect-[1/1.414] bg-dark-velvet rounded-md border border-gold/20 overflow-hidden flex flex-col justify-center items-center">
             
-            <!-- ELEGANT GOLDEN CORNER BORDERS (CSS OVERLAY) -->
-            <div class="absolute top-2 left-2 w-4 h-4 border-t border-l border-gold/40 pointer-events-none z-10"></div>
-            <div class="absolute top-2 right-2 w-4 h-4 border-t border-r border-gold/40 pointer-events-none z-10"></div>
-            <div class="absolute bottom-2 left-2 w-4 h-4 border-b border-l border-gold/40 pointer-events-none z-10"></div>
-            <div class="absolute bottom-2 right-2 w-4 h-4 border-b border-r border-gold/40 pointer-events-none z-10"></div>
+            <!-- ELEGANT GOLDEN CORNER BORDERS -->
+            <div class="absolute top-2 left-2 w-3.5 h-3.5 sm:w-4 sm:h-4 border-t border-l border-gold/40 pointer-events-none z-10"></div>
+            <div class="absolute top-2 right-2 w-3.5 h-3.5 sm:w-4 sm:h-4 border-t border-r border-gold/40 pointer-events-none z-10"></div>
+            <div class="absolute bottom-2 left-2 w-3.5 h-3.5 sm:w-4 sm:h-4 border-b border-l border-gold/40 pointer-events-none z-10"></div>
+            <div class="absolute bottom-2 right-2 w-3.5 h-3.5 sm:w-4 sm:h-4 border-b border-r border-gold/40 pointer-events-none z-10"></div>
 
-            <!-- BASE PAGE IMAGE (ACTIVE PAGE) -->
-            <img id="activePageImage" 
-                 src="Bestiario_cover_front.jpg" 
-                 alt="Página del Bestiario" 
-                 class="w-full h-full object-contain pointer-events-none transition-opacity duration-200"
-                 onerror="handleImageError(this)">
-
-            <!-- FALLBACK CONTAINER IF LOCAL JPG NOT FOUND -->
-            <div id="fallbackView" class="hidden absolute inset-0 flex-col items-center justify-center p-8 text-center bg-[#110f14] border border-gold/20">
-                <i id="fallbackIcon" class="fa-solid fa-book text-5xl text-gold/40 mb-4"></i>
-                <h2 id="fallbackTitle" class="font-cinzel text-gold text-xl mb-2">Portada</h2>
-                <p class="text-xs text-stone-400 max-w-xs font-garamond italic">
-                    Visualización en modo borrador. Coloca la imagen <span class="text-gold/80 font-mono" id="fallbackFilename">Bestiario_cover_front.jpg</span> en la misma carpeta para ver la ilustración completa.
-                </p>
+            <!-- BOOKMARK VISUAL RIBBON -->
+            <div id="bookmarkRibbon" onclick="toggleCurrentBookmark()" class="bookmark-ribbon hidden" title="Página marcada">
+                <svg width="22" height="36" viewBox="0 0 22 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M0 0H22V36L11 28.5L0 36V0Z" fill="#C8A458"/>
+                    <path d="M0 0H22V36L11 28.5L0 36V0Z" fill="url(#ribbon-grad)" fill-opacity="0.4"/>
+                    <defs>
+                        <linearGradient id="ribbon-grad" x1="11" y1="0" x2="11" y2="36" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#FFF5D6"/>
+                            <stop offset="1" stop-color="#8A6D2F"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
             </div>
 
-            <!-- INTERACTIVE CORNER FLIP HOTSPOTS WITH PEEL HIGHLIGHT -->
-            <div class="corner-hotspot corner-br" title="Siguiente página" onclick="nextPage()"></div>
-            <div class="corner-hotspot corner-bl" title="Página anterior" onclick="prevPage()"></div>
-            <div class="corner-hotspot corner-tr" title="Siguiente página" onclick="nextPage()"></div>
-            <div class="corner-hotspot corner-tl" title="Página anterior" onclick="prevPage()"></div>
+            <!-- ZOOMABLE WRAPPER LAYER -->
+            <div id="zoomLayer" class="zoom-layer">
+                <!-- BASE PAGE IMAGE (ACTIVE PAGE) -->
+                <img id="activePageImage" 
+                     src="Bestiario_cover_front.jpg" 
+                     alt="Criaturas de Venezuela" 
+                     class="w-full h-full object-contain pointer-events-none transition-opacity duration-200"
+                     onerror="handleImageError(this)">
+
+                <!-- FALLBACK CONTAINER IF LOCAL JPG NOT FOUND -->
+                <div id="fallbackView" class="hidden absolute inset-0 flex-col items-center justify-center p-6 sm:p-8 text-center bg-[#110f14] border border-gold/20">
+                    <i id="fallbackIcon" class="fa-solid fa-dragon text-4xl sm:text-5xl text-gold/40 mb-3 sm:mb-4"></i>
+                    <h2 id="fallbackTitle" class="font-cinzel text-gold text-lg sm:text-xl mb-1 sm:mb-2">Bestiario</h2>
+                    <p class="text-xs text-stone-400 max-w-xs font-garamond italic leading-relaxed">
+                        Coloca la imagen <span class="text-gold/90 font-mono text-[11px]" id="fallbackFilename">Bestiario_cover_front.jpg</span> en la carpeta del proyecto para visualizar la ilustración completa.
+                    </p>
+                </div>
+            </div>
+
+            <!-- INTERACTIVE CORNER FLIP HOTSPOTS -->
+            <div id="cornerBR" class="corner-hotspot corner-br" title="Siguiente página" onclick="nextPage()"></div>
+            <div id="cornerBL" class="corner-hotspot corner-bl" title="Página anterior" onclick="prevPage()"></div>
+            <div id="cornerTR" class="corner-hotspot corner-tr" title="Siguiente página" onclick="nextPage()"></div>
+            <div id="cornerTL" class="corner-hotspot corner-tl" title="Página anterior" onclick="prevPage()"></div>
 
             <!-- SIDE CLICK NAVIGATION ZONES -->
-            <div class="absolute top-0 right-0 w-1/3 h-full z-10 cursor-pointer" onclick="nextPage()" title="Siguiente"></div>
-            <div class="absolute top-0 left-0 w-1/3 h-full z-10 cursor-pointer" onclick="prevPage()" title="Anterior"></div>
+            <div id="sideNext" class="absolute top-0 right-0 w-1/4 h-full z-10 cursor-pointer" onclick="nextPage()" title="Siguiente"></div>
+            <div id="sidePrev" class="absolute top-0 left-0 w-1/4 h-full z-10 cursor-pointer" onclick="prevPage()" title="Anterior"></div>
 
-            <!-- 3D FLIPPING PAGE LAYER (CREATED DYNAMICALLY ON TURN) -->
+            <!-- 3D FLIPPING PAGE LAYER -->
             <div id="flipLayer"></div>
 
             <!-- SHADOW SHADER OVERLAY -->
@@ -307,24 +367,40 @@
     </main>
 
     <!-- DISCREET BOTTOM CONTROL BAR -->
-    <footer class="w-full py-4 px-6 flex flex-col sm:flex-row justify-between items-center z-20 gap-3 border-t border-gold/10 bg-black/60 backdrop-blur-md">
+    <footer class="w-full py-2.5 sm:py-3.5 px-4 sm:px-6 flex flex-col sm:flex-row justify-between items-center z-20 gap-2 sm:gap-3 border-t border-gold/10 bg-black/70 backdrop-blur-md">
         
-        <!-- PREVIOUS BUTTON -->
-        <button onclick="prevPage()" class="text-xs font-cinzel text-stone-400 hover:text-gold transition flex items-center space-x-2 px-3 py-1.5 rounded border border-transparent hover:border-gold/30">
-            <i class="fa-solid fa-chevron-left text-[10px]"></i>
-            <span>ANTERIOR</span>
-        </button>
+        <!-- PREVIOUS BUTTON & ZOOM RESET -->
+        <div class="flex items-center space-x-2">
+            <button onclick="prevPage()" class="text-xs font-cinzel text-stone-400 hover:text-gold transition flex items-center space-x-1.5 px-2.5 py-1 rounded border border-gold/10 hover:border-gold/30 bg-black/40">
+                <i class="fa-solid fa-chevron-left text-[10px]"></i>
+                <span>ANTERIOR</span>
+            </button>
+
+            <!-- ZOOM CONTROLS -->
+            <div class="flex items-center space-x-1 bg-black/40 border border-gold/10 rounded px-1.5 py-0.5">
+                <button onclick="changeZoom(-0.25)" class="text-stone-400 hover:text-gold p-1 text-xs" title="Alejar (Zoom -)">
+                    <i class="fa-solid fa-magnifying-glass-minus"></i>
+                </button>
+                <span id="zoomLevelIndicator" class="text-[10px] font-mono text-gold/80 w-8 text-center">100%</span>
+                <button onclick="changeZoom(0.25)" class="text-stone-400 hover:text-gold p-1 text-xs" title="Acercar (Zoom +)">
+                    <i class="fa-solid fa-magnifying-glass-plus"></i>
+                </button>
+                <button onclick="resetZoom()" class="text-stone-500 hover:text-gold p-1 text-[10px]" title="Restablecer Zoom">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </button>
+            </div>
+        </div>
 
         <!-- CENTER PAGE INDICATOR & SLIDER -->
-        <div class="flex items-center space-x-4">
-            <span id="pageIndicator" class="text-xs font-cinzel tracking-widest text-gold/90 min-w-[120px] text-center">PORTADA</span>
+        <div class="flex items-center space-x-3 w-full sm:w-auto justify-center">
+            <span id="pageIndicator" class="text-[11px] sm:text-xs font-cinzel tracking-widest text-gold/90 min-w-[110px] sm:min-w-[130px] text-center truncate">PORTADA</span>
             
             <input type="range" id="pageSlider" min="0" max="53" value="0" oninput="onSliderChange(this.value)" 
-                   class="w-28 sm:w-44 accent-amber-600 bg-stone-900 h-1 rounded-lg cursor-pointer opacity-70 hover:opacity-100 transition">
+                   class="w-24 sm:w-36 accent-amber-600 bg-stone-900 h-1 rounded-lg cursor-pointer opacity-70 hover:opacity-100 transition">
         </div>
 
         <!-- NEXT BUTTON -->
-        <button onclick="nextPage()" class="text-xs font-cinzel text-stone-400 hover:text-gold transition flex items-center space-x-2 px-3 py-1.5 rounded border border-transparent hover:border-gold/30">
+        <button onclick="nextPage()" class="text-xs font-cinzel text-stone-400 hover:text-gold transition flex items-center space-x-1.5 px-2.5 py-1 rounded border border-gold/10 hover:border-gold/30 bg-black/40">
             <span>SIGUIENTE</span>
             <i class="fa-solid fa-chevron-right text-[10px]"></i>
         </button>
@@ -334,18 +410,32 @@
     <div id="indexOverlay" class="fixed inset-0 bg-black/80 z-40 hidden backdrop-blur-md transition-opacity opacity-0" onclick="toggleIndexDrawer()"></div>
     <div id="indexDrawer" class="fixed top-0 right-0 h-full w-full sm:w-[420px] bg-[#0c0b0f] border-l border-gold/30 z-50 transform translate-x-full transition-transform duration-300 flex flex-col shadow-2xl">
         
-        <div class="p-4 border-b border-gold/20 flex justify-between items-center bg-black/50">
-            <div class="flex items-center space-x-2">
-                <i class="fa-solid fa-compass text-gold text-sm"></i>
-                <h2 class="text-gold font-cinzel text-sm tracking-wider">ÍNDICE DE PÁGINAS</h2>
+        <!-- DRAWER HEADER & TABS -->
+        <div class="p-3.5 border-b border-gold/20 flex flex-col space-y-3 bg-black/60">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-compass text-gold text-sm"></i>
+                    <h2 class="text-gold font-cinzel text-xs sm:text-sm tracking-wider uppercase">Índice del Bestiario</h2>
+                </div>
+                <button onclick="toggleIndexDrawer()" class="text-stone-400 hover:text-gold p-1 text-sm">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             </div>
-            <button onclick="toggleIndexDrawer()" class="text-stone-400 hover:text-gold p-1 text-sm">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
+
+            <!-- FILTER TABS: TODAS / MARCADORES -->
+            <div class="flex border border-gold/20 rounded p-0.5 bg-black/40 text-xs font-cinzel">
+                <button id="tabAllPages" onclick="switchDrawerTab('all')" class="flex-1 py-1 text-center rounded bg-gold/20 text-gold font-semibold transition">
+                    TODAS (<span id="totalCountLabel">52</span>)
+                </button>
+                <button id="tabBookmarks" onclick="switchDrawerTab('bookmarks')" class="flex-1 py-1 text-center rounded text-stone-400 hover:text-gold transition flex items-center justify-center space-x-1">
+                    <i class="fa-solid fa-bookmark text-[10px] text-gold"></i>
+                    <span>MARCADORES (<span id="bookmarkCountLabel">0</span>)</span>
+                </button>
+            </div>
         </div>
 
-        <!-- THUMBNAIL GRID -->
-        <div id="thumbnailGrid" class="flex-1 overflow-y-auto p-4 grid grid-cols-3 gap-3">
+        <!-- THUMBNAIL GRID CONTAINER -->
+        <div id="thumbnailGrid" class="flex-1 overflow-y-auto p-3.5 grid grid-cols-3 gap-2.5">
             <!-- Populated via JavaScript -->
         </div>
     </div>
@@ -353,25 +443,29 @@
     <!-- CORE LOGIC SCRIPT -->
     <script>
         /* ==========================================================================
-           CONFIGURACIÓN MODULAR DEL LIBRO / BOOK CONFIGURATION MODULE
-           Para reutilizar este visor con otras imágenes o colecciones, edita
-           las variables a continuación sin alterar el resto de la lógica.
+           CONFIGURACIÓN MODULAR DEL LIBRO / MODULAR BOOK CONFIGURATION
+           Ajusta estas variables para reutilizar este visor con cualquier otro libro.
            ========================================================================== */
         const BOOK_CONFIG = {
+            // Título oficial de la obra
+            title: "Bestiario - Coplas a las Criaturas de Venezuela",
+
             // Número total de páginas internas (excluyendo portada y contraportada)
             totalPages: 52,
 
-            // Nombres de archivos para portada (0) y contraportada (totalPages + 1)
+            // Nombres de archivos para la portada (índice 0) y contraportada (índice totalPages + 1)
             frontCoverImage: "Bestiario_cover_front.jpg",
             backCoverImage: "Bestiario_cover_back.jpg",
 
-            // Patrón de nombrado para páginas internas.
-            // {num} se reemplaza automáticamente por el número formateado con ceros.
+            // Patrón de nombrado para las páginas internas.
             pagePrefix: "Bestiario_page-",
             pageExtension: ".jpg",
             pagePaddingLength: 4, // 0001, 0002...
 
-            // Función generadora de rutas
+            // Storage Key para guardar marcadores localmente
+            storageKeyBookmarks: "bestiario_venezuela_bookmarks_v1",
+
+            // Función generadora de rutas de imagen según el índice de página
             getPageFilename: function(index) {
                 if (index === 0) return this.frontCoverImage;
                 if (index === this.totalPages + 1) return this.backCoverImage;
@@ -382,7 +476,7 @@
         };
 
         /* ==========================================================================
-           ESTADO GLOBAL DE LA APLICACIÓN / GLOBAL STATE
+           ESTADO GLOBAL Y CONTROL DE NAVEGACIÓN
            0 = Portada (Front Cover)
            1 a totalPages = Páginas internas
            totalPages + 1 = Contraportada (Back Cover)
@@ -390,8 +484,125 @@
         let currentPage = 0; 
         const maxIndex = BOOK_CONFIG.totalPages + 1;
         let isAnimating = false;
+        let drawerTab = 'all'; // 'all' | 'bookmarks'
 
-        // Preload next and previous images for instant smooth transitions
+        // Cargar Marcadores desde LocalStorage
+        let bookmarks = [];
+        try {
+            const saved = localStorage.getItem(BOOK_CONFIG.storageKeyBookmarks);
+            if (saved) bookmarks = JSON.parse(saved);
+        } catch(e) {
+            bookmarks = [];
+        }
+
+        function saveBookmarks() {
+            try {
+                localStorage.setItem(BOOK_CONFIG.storageKeyBookmarks, JSON.stringify(bookmarks));
+            } catch(e) {}
+            updateBookmarkUI();
+        }
+
+        function toggleCurrentBookmark() {
+            const idx = bookmarks.indexOf(currentPage);
+            if (idx >= 0) {
+                bookmarks.splice(idx, 1);
+            } else {
+                bookmarks.push(currentPage);
+                bookmarks.sort((a,b) => a - b);
+            }
+            saveBookmarks();
+            if (drawerTab === 'bookmarks') buildThumbnailGrid();
+        }
+
+        function updateBookmarkUI() {
+            const isBookmarked = bookmarks.includes(currentPage);
+            const btnIcon = document.getElementById('bookmarkBtnIcon');
+            const ribbon = document.getElementById('bookmarkRibbon');
+
+            if (isBookmarked) {
+                btnIcon.className = "fa-solid fa-bookmark text-xs text-gold";
+                ribbon.classList.remove('hidden');
+            } else {
+                btnIcon.className = "fa-regular fa-bookmark text-xs";
+                ribbon.classList.add('hidden');
+            }
+
+            document.getElementById('bookmarkCountLabel').innerText = bookmarks.length;
+        }
+
+        /* ==========================================================================
+           SISTEMA DE ZOOM Y PANEO INTERACTIVO
+           ========================================================================== */
+        let currentZoom = 1.0;
+        let panX = 0;
+        let panY = 0;
+        let isDragging = false;
+        let startX = 0, startY = 0;
+
+        function applyZoomTransform() {
+            const zoomLayer = document.getElementById('zoomLayer');
+            zoomLayer.style.transform = `scale(${currentZoom}) translate(${panX}px, ${panY}px)`;
+            document.getElementById('zoomLevelIndicator').innerText = `${Math.round(currentZoom * 100)}%`;
+
+            // Toggle hotspot overlays when zoomed in to allow smooth pan/drag
+            const pointerEvents = currentZoom > 1.05 ? 'none' : 'auto';
+            ['cornerBR', 'cornerBL', 'cornerTR', 'cornerTL', 'sideNext', 'sidePrev'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.pointerEvents = pointerEvents;
+            });
+        }
+
+        function changeZoom(delta) {
+            currentZoom = Math.min(Math.max(1.0, currentZoom + delta), 3.0);
+            if (currentZoom === 1.0) {
+                panX = 0;
+                panY = 0;
+            }
+            applyZoomTransform();
+        }
+
+        function resetZoom() {
+            currentZoom = 1.0;
+            panX = 0;
+            panY = 0;
+            applyZoomTransform();
+        }
+
+        // Mouse Drag / Touch Pan Implementation for Zoom Mode
+        const pageFrame = document.getElementById('pageFrame');
+
+        pageFrame.addEventListener('mousedown', (e) => {
+            if (currentZoom > 1.05) {
+                isDragging = true;
+                startX = e.clientX - panX;
+                startY = e.clientY - panY;
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isDragging && currentZoom > 1.05) {
+                panX = (e.clientX - startX);
+                panY = (e.clientY - startY);
+                applyZoomTransform();
+            }
+        });
+
+        window.addEventListener('mouseup', () => { isDragging = false; });
+
+        // Double click/tap zoom shortcut
+        let lastTap = 0;
+        pageFrame.addEventListener('touchend', (e) => {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTap;
+            if (tapLength < 300 && tapLength > 0) {
+                if (currentZoom > 1.1) resetZoom();
+                else changeZoom(0.75);
+                e.preventDefault();
+            }
+            lastTap = currentTime;
+        });
+
+        /* Preload images for instant rendering */
         function preloadNeighborImages(index) {
             if (index < maxIndex) {
                 const imgNext = new Image();
@@ -403,7 +614,7 @@
             }
         }
 
-        // Obtiene la etiqueta textual para los indicadores de la interfaz
+        // Return label string for current page
         function getPageLabel(index) {
             if (index === 0) return "PORTADA";
             if (index === maxIndex) return "CONTRAPORTADA";
@@ -412,6 +623,7 @@
 
         // Update view & UI elements
         function updatePageDisplay(index) {
+            resetZoom();
             const filename = BOOK_CONFIG.getPageFilename(index);
             const activeImg = document.getElementById('activePageImage');
             const fallbackView = document.getElementById('fallbackView');
@@ -422,15 +634,16 @@
 
             activeImg.src = filename;
 
-            // Update footer & slider
+            // Update page controls
             document.getElementById('pageIndicator').innerText = getPageLabel(index);
             document.getElementById('pageSlider').value = index;
 
             preloadNeighborImages(index);
+            updateBookmarkUI();
             highlightCurrentThumbnail(index);
         }
 
-        // Handle missing local images with elegant fallback
+        // Fallback view when local JPG is missing
         function handleImageError(imgElement) {
             imgElement.style.display = 'none';
             const fallbackView = document.getElementById('fallbackView');
@@ -439,13 +652,13 @@
 
             if (currentPage === 0) {
                 document.getElementById('fallbackTitle').innerText = "Portada";
-                icon.className = "fa-solid fa-book text-5xl text-gold/40 mb-4";
+                icon.className = "fa-solid fa-book text-4xl sm:text-5xl text-gold/40 mb-3";
             } else if (currentPage === maxIndex) {
                 document.getElementById('fallbackTitle').innerText = "Contraportada";
-                icon.className = "fa-solid fa-book-journal-whills text-5xl text-gold/40 mb-4";
+                icon.className = "fa-solid fa-book-journal-whills text-4xl sm:text-5xl text-gold/40 mb-3";
             } else {
-                document.getElementById('fallbackTitle').innerText = `Página ${currentPage}`;
-                icon.className = "fa-solid fa-dragon text-5xl text-gold/40 mb-4";
+                document.getElementById('fallbackTitle').innerText = `Criatura ${currentPage}`;
+                icon.className = "fa-solid fa-dragon text-4xl sm:text-5xl text-gold/40 mb-3";
             }
 
             document.getElementById('fallbackFilename').innerText = filename;
@@ -453,7 +666,6 @@
             fallbackView.classList.add('flex');
         }
 
-        // 3D Page Turn Animation Trigger (Next)
         function nextPage() {
             if (currentPage >= maxIndex || isAnimating) return;
             isAnimating = true;
@@ -462,7 +674,6 @@
             const currentFilename = BOOK_CONFIG.getPageFilename(currentPage);
             const nextFilename = BOOK_CONFIG.getPageFilename(currentPage + 1);
 
-            // Construct 3D turning card element
             flipLayer.innerHTML = `
                 <div class="flipping-page anim-flip-next">
                     <div class="flipping-face">
@@ -474,20 +685,17 @@
                 </div>
             `;
 
-            // Complete page state turn midway through animation
             setTimeout(() => {
                 currentPage++;
                 updatePageDisplay(currentPage);
             }, 370);
 
-            // Clean up flip layer after animation finishes
             setTimeout(() => {
                 flipLayer.innerHTML = '';
                 isAnimating = false;
             }, 750);
         }
 
-        // 3D Page Turn Animation Trigger (Previous)
         function prevPage() {
             if (currentPage <= 0 || isAnimating) return;
             isAnimating = true;
@@ -496,7 +704,6 @@
             const currentFilename = BOOK_CONFIG.getPageFilename(currentPage);
             const prevFilename = BOOK_CONFIG.getPageFilename(currentPage - 1);
 
-            // Construct 3D turning card element flipping backwards
             flipLayer.innerHTML = `
                 <div class="flipping-page anim-flip-prev">
                     <div class="flipping-face">
@@ -532,7 +739,6 @@
             toggleIndexDrawer();
         }
 
-        // Index Drawer Toggle
         function toggleIndexDrawer() {
             const overlay = document.getElementById('indexOverlay');
             const drawer = document.getElementById('indexDrawer');
@@ -541,6 +747,7 @@
                 overlay.classList.remove('hidden');
                 setTimeout(() => overlay.classList.remove('opacity-0'), 10);
                 drawer.classList.remove('translate-x-full');
+                buildThumbnailGrid();
             } else {
                 overlay.classList.add('opacity-0');
                 drawer.classList.add('translate-x-full');
@@ -548,38 +755,71 @@
             }
         }
 
-        // Build thumbnail drawer items (Cover + Pages 1-52 + Back Cover)
+        function switchDrawerTab(tab) {
+            drawerTab = tab;
+            const tabAll = document.getElementById('tabAllPages');
+            const tabBM = document.getElementById('tabBookmarks');
+
+            if (tab === 'all') {
+                tabAll.className = "flex-1 py-1 text-center rounded bg-gold/20 text-gold font-semibold transition";
+                tabBM.className = "flex-1 py-1 text-center rounded text-stone-400 hover:text-gold transition flex items-center justify-center space-x-1";
+            } else {
+                tabBM.className = "flex-1 py-1 text-center rounded bg-gold/20 text-gold font-semibold transition flex items-center justify-center space-x-1";
+                tabAll.className = "flex-1 py-1 text-center rounded text-stone-400 hover:text-gold transition";
+            }
+            buildThumbnailGrid();
+        }
+
+        // Build drawer thumbnail grid
         function buildThumbnailGrid() {
             const grid = document.getElementById('thumbnailGrid');
             let html = '';
             
-            // Helper SVG placeholder data string
             const getSvgFallback = (label) => `data:image/svg+xml,%3CSVG%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='140'%3E%3Crect%20width='100%25'%20height='100%25'%20fill='%23111115'/%3E%3Ctext%20x='50%25'%20y='50%25'%20fill='%23c8a458'%20font-size='12'%20text-anchor='middle'%20dominant-baseline='middle'%3E${encodeURIComponent(label)}%3C/text%3E%3C/SVG%3E`;
 
-            for (let i = 0; i <= maxIndex; i++) {
+            const pagesToRender = drawerTab === 'all' 
+                ? Array.from({length: maxIndex + 1}, (_, i) => i)
+                : bookmarks;
+
+            if (pagesToRender.length === 0 && drawerTab === 'bookmarks') {
+                grid.innerHTML = `
+                    <div class="col-span-3 py-12 text-center text-stone-500 font-garamond italic text-sm">
+                        <i class="fa-regular fa-bookmark text-2xl mb-2 text-gold/30 block"></i>
+                        No has añadido marcadores aún.
+                    </div>
+                `;
+                return;
+            }
+
+            pagesToRender.forEach(i => {
                 const filename = BOOK_CONFIG.getPageFilename(i);
                 let label = `${i}`;
                 if (i === 0) label = "Portada";
                 if (i === maxIndex) label = "Contraportada";
 
+                const isBM = bookmarks.includes(i);
+
                 html += `
-                    <button id="thumb-${i}" onclick="jumpToPage(${i})" class="p-1.5 bg-black/60 hover:bg-black/90 border border-gold/20 hover:border-gold/80 rounded transition group flex flex-col items-center">
+                    <button id="thumb-${i}" onclick="jumpToPage(${i})" class="p-1 bg-black/60 hover:bg-black/90 border border-gold/20 hover:border-gold/80 rounded transition group flex flex-col items-center relative">
+                        ${isBM ? '<i class="fa-solid fa-bookmark text-gold text-[10px] absolute top-2 right-2 z-10 drop-shadow"></i>' : ''}
                         <div class="w-full aspect-[1/1.4] bg-stone-900 rounded overflow-hidden relative mb-1 border border-stone-800">
                             <img src="${filename}" alt="${label}" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='${getSvgFallback(label)}';">
                         </div>
-                        <span class="text-[10px] font-cinzel text-stone-400 group-hover:text-gold">${label}</span>
+                        <span class="text-[10px] font-cinzel text-stone-400 group-hover:text-gold truncate w-full text-center">${label}</span>
                     </button>
                 `;
-            }
+            });
+
             grid.innerHTML = html;
 
-            // Configure slider bounds based on total items
+            // Update bounds & counts
             const slider = document.getElementById('pageSlider');
             slider.min = 0;
             slider.max = maxIndex;
 
-            // Update drawer button badge count
-            document.getElementById('indexBtnLabel').innerText = `ÍNDICE (${BOOK_CONFIG.totalPages})`;
+            document.getElementById('totalCountLabel').innerText = BOOK_CONFIG.totalPages;
+            document.getElementById('bookmarkCountLabel').innerText = bookmarks.length;
+            highlightCurrentThumbnail(currentPage);
         }
 
         function highlightCurrentThumbnail(index) {
@@ -587,15 +827,15 @@
                 const el = document.getElementById(`thumb-${i}`);
                 if (el) {
                     if (i === index) {
-                        el.classList.add('border-gold', 'bg-gold/10');
+                        el.classList.add('border-gold', 'bg-gold/15');
                     } else {
-                        el.classList.remove('border-gold', 'bg-gold/10');
+                        el.classList.remove('border-gold', 'bg-gold/15');
                     }
                 }
             }
         }
 
-        // Fullscreen toggle
+        // Fullscreen Toggle
         function toggleFullScreen() {
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen().catch(() => {});
@@ -604,22 +844,25 @@
             }
         }
 
-        // Touch Swipe Gesture Support
         let touchStartX = 0;
         let touchEndX = 0;
 
         document.getElementById('pageFrame').addEventListener('touchstart', (e) => {
-            touchStartX = e.changedTouches[0].screenX;
+            if (currentZoom <= 1.05 && e.touches.length === 1) {
+                touchStartX = e.changedTouches[0].screenX;
+            }
         }, { passive: true });
 
         document.getElementById('pageFrame').addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            handleSwipe();
+            if (currentZoom <= 1.05 && e.changedTouches.length === 1) {
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipe();
+            }
         }, { passive: true });
 
         function handleSwipe() {
             const diff = touchStartX - touchEndX;
-            if (Math.abs(diff) > 40) {
+            if (Math.abs(diff) > 45) {
                 if (diff > 0) nextPage();
                 else prevPage();
             }
@@ -631,12 +874,13 @@
                 nextPage();
             } else if (e.key === 'ArrowLeft') {
                 prevPage();
+            } else if (e.key === 'b' || e.key === 'B') {
+                toggleCurrentBookmark();
             }
         });
 
-        // Initialize on load
+        // Initialize on Load
         window.addEventListener('DOMContentLoaded', () => {
-            buildThumbnailGrid();
             updatePageDisplay(currentPage);
         });
     </script>
